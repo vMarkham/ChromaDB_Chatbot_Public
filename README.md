@@ -1,6 +1,14 @@
+# My Little Fork
+
+This is a fork of David Shapiro's ChromaDB Chatbot with some bugfixes and added features.
+
+# Why did I make this?
+
+These fixes would have been just a pull request but David turned the original repo into a read-only archive. While trying out his original ChromaDB Chatbot, I discovered that there was a fatal flaw in the system: **Dave's system only ever creates one KB article.** I tested numerous times, trying to add wildly different subjects to my chats (Green apples, Mount Everest Kielbasa, etc..), but alas it always updated the singular entry in the vector database either erasing the previous information entirely or synthesizing both subjects together. Puzzled, I determined to get to the bottom of this. I discovered 
+
 # ChromaDB Chatbot
 
-Public version of my ChromaDB chatbot that keeps track of user profile and historical topics. Should be mostly ready to go right out of the box. 
+Public version of ~~my~~ David Shapiro's ChromaDB chatbot that keeps track of user profile and historical topics. Should be mostly ready to go right out of the box. 
 
 ## Setup
 
