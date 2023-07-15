@@ -52,9 +52,6 @@ def chatbot(messages, model="gpt-4", temperature=0):
 
 
 def compare_kb_and_conversation(bot, kb_article, user_input):
-    #           kb_convo = list()
-    #       kb_convo.append({'role': 'system', 'content': open_file('system_instantiate_new_kb.txt')})
-    #       kb_convo.append({'role': 'user', 'content': main_scratchpad})
     #       article = chatbot(kb_convo)
     kb_convo = list()
     kb_convo.append({'role': 'system', 'content': open_file('system_compare_kb_user_input.txt').replace('<<KB>>', kb_article)})
