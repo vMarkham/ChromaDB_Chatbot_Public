@@ -51,6 +51,22 @@ def chatbot(messages, model="gpt-4", temperature=0):
             sleep(2 ** (retry - 1) * 5)
 
 
+def compare_kb_and_conversation(bot, kb_article, user_input):
+    #           kb_convo = list()
+    #       kb_convo.append({'role': 'system', 'content': open_file('system_instantiate_new_kb.txt')})
+    #       kb_convo.append({'role': 'user', 'content': main_scratchpad})
+    #       article = chatbot(kb_convo)
+    kb_convo = list()
+    kb_convo.append({'role': 'system', 'content': open_file('system_compare_kb_user_input.txt').replace('<<KB>>', kb_article)})
+    kb_convo.append({'role': 'user', 'content': user_input})
+    comparison_output = bot(kb_convo)
+    if "UPDATE_KB" in comparison_output:
+        return 'UPDATE_KB'
+    elif "NEW_KB" in comparison_output:
+        return 'NEW_KB'
+    else:
+        # the default action is NO_ACTION, as NOP is usually a safer default
+        return 'NO_ACTION'
 
 
 if __name__ == '__main__':
@@ -139,27 +155,43 @@ if __name__ == '__main__':
             results = collection.query(query_texts=[main_scratchpad], n_results=1)
             kb = results['documents'][0][0]
             kb_id = results['ids'][0][0]
-            
-            # Expand current KB
-            kb_convo = list()
-            kb_convo.append({'role': 'system', 'content': open_file('system_update_existing_kb.txt').replace('<<KB>>', kb)})
-            kb_convo.append({'role': 'user', 'content': main_scratchpad})
-            article = chatbot(kb_convo)
-            collection.update(ids=[kb_id],documents=[article])
-            save_file('db_logs/log_%s_update.txt' % time(), 'Updated document %s:\n%s' % (kb_id, article))
-            # TODO - save more info in DB logs, probably as YAML file (original article, new info, final article)
-            
-            # Split KB if too large
-            kb_len = len(article.split(' '))
-            if kb_len > 1000:
+
+            print('\n\nChecking if we need a new KB article...')
+            should_create_new_article = compare_kb_and_conversation(chatbot, kb, main_scratchpad)
+            print(should_create_new_article)
+            if should_create_new_article == 'NEW_KB':
+                 # generate a new KB article
                 kb_convo = list()
-                kb_convo.append({'role': 'system', 'content': open_file('system_split_kb.txt')})
-                kb_convo.append({'role': 'user', 'content': article})
-                articles = chatbot(kb_convo).split('ARTICLE 2:')
-                a1 = articles[0].replace('ARTICLE 1:', '').strip()
-                a2 = articles[1].strip()
-                collection.update(ids=[kb_id],documents=[a1])
+                kb_convo.append({'role': 'system', 'content': open_file('system_instantiate_new_kb.txt')})
+                kb_convo.append({'role': 'user', 'content': main_scratchpad})
+                article = chatbot(kb_convo)
                 new_id = str(uuid4())
-                collection.add(documents=[a2],ids=[new_id])
-                save_file('db_logs/log_%s_split.txt' % time(), 'Split document %s, added %s:\n%s\n\n%s' % (kb_id, new_id, a1, a2))
+                collection.add(documents=[article],ids=[new_id])
+                save_file('db_logs/log_%s_add.txt' % time(), 'Added document %s:\n%s' % (new_id, article))
+            elif should_create_new_article == 'UPDATE_KB':
+                # your code for the chatbot to update the existing KB article here
+                # ensure you update the existing article in the collection
+            
+                # Expand current KB
+                kb_convo = list()
+                kb_convo.append({'role': 'system', 'content': open_file('system_update_existing_kb.txt').replace('<<KB>>', kb)})
+                kb_convo.append({'role': 'user', 'content': main_scratchpad})
+                article = chatbot(kb_convo)
+                collection.update(ids=[kb_id],documents=[article])
+                save_file('db_logs/log_%s_update.txt' % time(), 'Updated document %s:\n%s' % (kb_id, article))
+                # TODO - save more info in DB logs, probably as YAML file (original article, new info, final article)
+                
+                # Split KB if too large
+                kb_len = len(article.split(' '))
+                if kb_len > 1000:
+                    kb_convo = list()
+                    kb_convo.append({'role': 'system', 'content': open_file('system_split_kb.txt')})
+                    kb_convo.append({'role': 'user', 'content': article})
+                    articles = chatbot(kb_convo).split('ARTICLE 2:')
+                    a1 = articles[0].replace('ARTICLE 1:', '').strip()
+                    a2 = articles[1].strip()
+                    collection.update(ids=[kb_id],documents=[a1])
+                    new_id = str(uuid4())
+                    collection.add(documents=[a2],ids=[new_id])
+                    save_file('db_logs/log_%s_split.txt' % time(), 'Split document %s, added %s:\n%s\n\n%s' % (kb_id, new_id, a1, a2))
         chroma_client.persist()
